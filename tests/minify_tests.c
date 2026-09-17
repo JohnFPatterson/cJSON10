@@ -97,6 +97,14 @@ static void cjson_minify_should_not_modify_strings(void)
     free(minified);
 }
 
+static void cjson_minify_should_handle_escaped_backslash_at_end_of_string(void)
+{
+    char minified[] = "{ \"a\\\\\" : \"b c\", \"d\" : [ \"\\\\\" , 1 ] }";
+
+    cJSON_Minify(minified);
+    TEST_ASSERT_EQUAL_STRING("{\"a\\\\\":\"b c\",\"d\":[\"\\\\\",1]}", minified);
+}
+
 static void cjson_minify_should_minify_json(void) {
     const char to_minify[] =
             "{\n"
@@ -168,6 +176,7 @@ int CJSON_CDECL main(void)
     RUN_TEST(cjson_minify_should_remove_multiline_comments);
     RUN_TEST(cjson_minify_should_remove_spaces);
     RUN_TEST(cjson_minify_should_not_modify_strings);
+    RUN_TEST(cjson_minify_should_handle_escaped_backslash_at_end_of_string);
     RUN_TEST(cjson_minify_should_not_loop_infinitely);
 
     return UNITY_END();

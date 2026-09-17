@@ -2913,7 +2913,8 @@ static void minify_string(char **input, char **output) {
             *input += static_strlen("\"");
             *output += static_strlen("\"");
             return;
-        } else if (((*input)[0] == '\\') && ((*input)[1] == '\"')) {
+        } else if (((*input)[0] == '\\') && ((*input)[1] != '\0')) {
+            /* copy the escaped character as well, it can't terminate the string */
             (*output)[1] = (*input)[1];
             *input += static_strlen("\"");
             *output += static_strlen("\"");
