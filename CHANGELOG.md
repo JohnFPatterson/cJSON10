@@ -7,7 +7,7 @@ Fixes:
 * Check for NULL in cJSON_DetachItemViaPointer, fixes #882, see #886
 * Fix #881, check overlap before calling strcpy in cJSON_SetValuestring, see #885
 * Fix #880 Max recursion depth for cJSON_Duplicate to prevent stack exhaustion, see #888
-* Allocate memory for the temporary buffer when paring numbers, see #939
+* Allocate memory for the temporary buffer when parsing numbers, see #939
 * fix the incorrect check in decode_array_index_from_pointer, see #957
 
 1.7.18 (May 13, 2024)

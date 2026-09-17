@@ -111,7 +111,7 @@ typedef struct cJSON
     /* The type of the item, as above. */
     int type;
 
-    /* The item's string, if type==cJSON_String  and type == cJSON_Raw */
+    /* The item's string, if type==cJSON_String or type==cJSON_Raw */
     char *valuestring;
     /* writing to valueint is DEPRECATED, use cJSON_SetNumberValue instead */
     int valueint;
@@ -131,13 +131,13 @@ typedef struct cJSON_Hooks
 
 typedef int cJSON_bool;
 
-/* Limits how deeply nested arrays/objects can be before cJSON rejects to parse them.
+/* Limits how deeply nested arrays/objects can be before cJSON refuses to parse or print them.
  * This is to prevent stack overflows. */
 #ifndef CJSON_NESTING_LIMIT
 #define CJSON_NESTING_LIMIT 1000
 #endif
 
-/* Limits the length of circular references can be before cJSON rejects to parse them.
+/* Limits how deeply cJSON_Duplicate recurses before it gives up, e.g. because of circular references.
  * This is to prevent stack overflows. */
 #ifndef CJSON_CIRCULAR_LIMIT
 #define CJSON_CIRCULAR_LIMIT 10000
@@ -212,7 +212,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateObject(void);
 /* Create a string where valuestring references a string so
  * it will not be freed by cJSON_Delete */
 CJSON_PUBLIC(cJSON *) cJSON_CreateStringReference(const char *string);
-/* Create an object/array that only references it's elements so
+/* Create an object/array that only references its elements so
  * they will not be freed by cJSON_Delete */
 CJSON_PUBLIC(cJSON *) cJSON_CreateObjectReference(const cJSON *child);
 CJSON_PUBLIC(cJSON *) cJSON_CreateArrayReference(const cJSON *child);
@@ -260,8 +260,8 @@ CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse);
  * case_sensitive determines if object keys are treated case sensitive (1) or case insensitive (0) */
 CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * const b, const cJSON_bool case_sensitive);
 
-/* Minify a strings, remove blank characters(such as ' ', '\t', '\r', '\n') from strings.
- * The input pointer json cannot point to a read-only address area, such as a string constant, 
+/* Minify a string, remove blank characters (such as ' ', '\t', '\r', '\n') and comments from it.
+ * The input pointer json cannot point to a read-only address area, such as a string constant,
  * but should point to a readable and writable address area. */
 CJSON_PUBLIC(void) cJSON_Minify(char *json);
 
@@ -281,19 +281,19 @@ CJSON_PUBLIC(cJSON*) cJSON_AddArrayToObject(cJSON * const object, const char * c
 #define cJSON_SetIntValue(object, number) ((object) ? (object)->valueint = (object)->valuedouble = (number) : (number))
 /* helper for the cJSON_SetNumberValue macro */
 CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number);
-#define cJSON_SetNumberValue(object, number) ((object != NULL) ? cJSON_SetNumberHelper(object, (double)number) : (number))
+#define cJSON_SetNumberValue(object, number) (((object) != NULL) ? cJSON_SetNumberHelper(object, (double)(number)) : (number))
 /* Change the valuestring of a cJSON_String object, only takes effect when type of object is cJSON_String */
 CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring);
 
 /* If the object is not a boolean type this does nothing and returns cJSON_Invalid else it returns the new type*/
 #define cJSON_SetBoolValue(object, boolValue) ( \
-    (object != NULL && ((object)->type & (cJSON_False|cJSON_True))) ? \
+    ((object) != NULL && ((object)->type & (cJSON_False|cJSON_True))) ? \
     (object)->type=((object)->type &(~(cJSON_False|cJSON_True)))|((boolValue)?cJSON_True:cJSON_False) : \
     cJSON_Invalid\
 )
 
 /* Macro for iterating over an array or object */
-#define cJSON_ArrayForEach(element, array) for(element = (array != NULL) ? (array)->child : NULL; element != NULL; element = element->next)
+#define cJSON_ArrayForEach(element, array) for(element = ((array) != NULL) ? (array)->child : NULL; (element) != NULL; element = (element)->next)
 
 /* malloc/free objects using the malloc/free functions that have been set with cJSON_InitHooks */
 CJSON_PUBLIC(void *) cJSON_malloc(size_t size);
