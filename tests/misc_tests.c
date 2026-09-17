@@ -313,6 +313,23 @@ static void cjson_detach_item_via_pointer_should_return_null_if_item_prev_is_nul
     TEST_ASSERT_TRUE_MESSAGE(cJSON_DetachItemViaPointer(parent, &(list[0])) == &(list[0]), "Failed to detach in the middle.");
 }
 
+static void cjson_detach_item_via_pointer_should_return_null_if_parent_has_no_children(void)
+{
+    cJSON list[2];
+    cJSON parent[1];
+
+    memset(list, '\0', sizeof(list));
+    memset(parent, '\0', sizeof(parent));
+
+    /* link the list, but don't attach it to the parent */
+    list[0].next = &(list[1]);
+    list[1].prev = &(list[0]);
+
+    TEST_ASSERT_NULL(cJSON_DetachItemViaPointer(parent, &(list[1])));
+    TEST_ASSERT_TRUE(list[0].next == &(list[1]));
+    TEST_ASSERT_NULL(cJSON_DetachItemViaPointer(parent, &(list[0])));
+}
+
 static void cjson_replace_item_via_pointer_should_replace_items(void)
 {
     cJSON replacements[3];
@@ -815,6 +832,7 @@ int CJSON_CDECL main(void)
     RUN_TEST(cjson_set_number_value_should_set_numbers);
     RUN_TEST(cjson_detach_item_via_pointer_should_detach_items);
     RUN_TEST(cjson_detach_item_via_pointer_should_return_null_if_item_prev_is_null);
+    RUN_TEST(cjson_detach_item_via_pointer_should_return_null_if_parent_has_no_children);
     RUN_TEST(cjson_replace_item_via_pointer_should_replace_items);
     RUN_TEST(cjson_replace_item_in_object_should_preserve_name);
     RUN_TEST(cjson_functions_should_not_crash_with_null_pointers);
