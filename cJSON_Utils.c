@@ -25,7 +25,7 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-#ifdef __GNUCC__
+#ifdef __GNUC__
 #pragma GCC visibility push(default)
 #endif
 #if defined(_MSC_VER)
@@ -41,12 +41,11 @@
 #include <limits.h>
 #include <math.h>
 #include <float.h>
-#include <math.h>
 
 #if defined(_MSC_VER)
 #pragma warning (pop)
 #endif
-#ifdef __GNUCC__
+#ifdef __GNUC__
 #pragma GCC visibility pop
 #endif
 
@@ -108,7 +107,7 @@ static int compare_strings(const unsigned char *string1, const unsigned char *st
     return tolower(*string1) - tolower(*string2);
 }
 
-/* securely comparison of floating-point variables */
+/* securely compare floating-point variables */
 static cJSON_bool compare_double(double a, double b)
 {
     double maxVal = fabs(a) > fabs(b) ? fabs(a) : fabs(b);
@@ -147,7 +146,7 @@ static cJSON_bool compare_pointers(const unsigned char *name, const unsigned cha
     if (((*pointer != 0) && (*pointer != '/')) != (*name != 0))
     {
         /* one string has ended, the other not */
-        return false;;
+        return false;
     }
 
     return true;
@@ -780,7 +779,7 @@ static enum patch_operation decode_patch_operation(const cJSON * const patch, co
     return INVALID;
 }
 
-/* overwrite and existing item with another one and free resources on the way */
+/* overwrite an existing item with another one and free resources on the way */
 static void overwrite_item(cJSON * const root, const cJSON replacement)
 {
     if (root == NULL)

@@ -71,17 +71,17 @@
 
 /* define isnan and isinf for ANSI C, if in C99 or above, isnan and isinf has been defined in math.h */
 #ifndef isinf
-#define isinf(d) (isnan((d - d)) && !isnan(d))
+#define isinf(d) (isnan(((d) - (d))) && !isnan(d))
 #endif
 #ifndef isnan
-#define isnan(d) (d != d)
+#define isnan(d) ((d) != (d))
 #endif
 
 #ifndef NAN
 #ifdef _WIN32
-#define NAN sqrt(-1.0)
+#define NAN (sqrt(-1.0))
 #else
-#define NAN 0.0/0.0
+#define NAN (0.0/0.0)
 #endif
 #endif
 
@@ -585,7 +585,7 @@ static void update_offset(printbuffer * const buffer)
     buffer->offset += strlen((const char*)buffer_pointer);
 }
 
-/* securely comparison of floating-point variables */
+/* securely compare floating-point variables */
 static cJSON_bool compare_double(double a, double b)
 {
     double maxVal = fabs(a) > fabs(b) ? fabs(a) : fabs(b);
@@ -785,7 +785,7 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
     }
     else if (codepoint <= 0x10FFFF)
     {
-        /* four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx */
+        /* four bytes, encoding 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
         utf8_length = 4;
         first_byte_mark = 0xF0; /* 11110000 */
     }
@@ -820,7 +820,7 @@ fail:
     return 0;
 }
 
-/* Parse the input text into an unescaped cinput, and populate item. */
+/* Parse the input text into an unescaped cstring, and populate item. */
 static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_buffer)
 {
     const unsigned char *input_pointer = buffer_at_offset(input_buffer) + 1;
@@ -1501,7 +1501,7 @@ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buf
 
     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
     {
-        return false; /* to deeply nested */
+        return false; /* too deeply nested */
     }
     input_buffer->depth++;
 
@@ -1666,7 +1666,7 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
 
     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
     {
-        return false; /* to deeply nested */
+        return false; /* too deeply nested */
     }
     input_buffer->depth++;
 
@@ -1691,7 +1691,7 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
 
     /* step back to character in front of the first element */
     input_buffer->offset--;
-    /* loop through the comma separated array elements */
+    /* loop through the comma separated object members */
     do
     {
         /* allocate next item */
@@ -2779,14 +2779,14 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateStringArray(const char *const *strings, int co
 }
 
 /* Duplication */
-cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse);
+static cJSON *cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse);
 
 CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse)
 {
     return cJSON_Duplicate_rec(item, 0, recurse );
 }
 
-cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
+static cJSON *cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
 {
     cJSON *newitem = NULL;
     cJSON *child = NULL;
