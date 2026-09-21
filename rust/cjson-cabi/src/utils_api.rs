@@ -32,14 +32,20 @@ fn out(id: Option<cjson_core::NodeId>) -> *mut CJson {
 
 export! {
     pub unsafe fn cJSONUtils_GetPointer(object: *mut CJson, pointer: *const c_char) -> *mut CJson {
+        let Some(p) = cstr_bytes(pointer) else {
+            return std::ptr::null_mut();
+        };
         let st = store();
-        out(utils::get_item_from_pointer(&st, nid(object), cstr_bytes(pointer).unwrap_or(b""), false))
+        out(utils::get_item_from_pointer(&st, nid(object), p, false))
     }
 }
 export! {
     pub unsafe fn cJSONUtils_GetPointerCaseSensitive(object: *mut CJson, pointer: *const c_char) -> *mut CJson {
+        let Some(p) = cstr_bytes(pointer) else {
+            return std::ptr::null_mut();
+        };
         let st = store();
-        out(utils::get_item_from_pointer(&st, nid(object), cstr_bytes(pointer).unwrap_or(b""), true))
+        out(utils::get_item_from_pointer(&st, nid(object), p, true))
     }
 }
 

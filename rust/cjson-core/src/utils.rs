@@ -661,7 +661,13 @@ pub fn merge_patch<S: Store>(
     patch: Option<NodeId>,
     case_sensitive: bool,
 ) -> Option<NodeId> {
-    let patch = patch?;
+    let Some(patch) = patch else {
+        // C: !IsObject(NULL) → Duplicate(NULL)=NULL, Delete(target), return NULL
+        if let Some(t) = target {
+            store.delete(Some(t));
+        }
+        return None;
+    };
     if !is_object(store, Some(patch)) {
         let dup = duplicate(store, patch, true);
         if let Some(t) = target {

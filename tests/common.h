@@ -28,6 +28,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef true
+#define true ((cJSON_bool)1)
+#endif
+#ifndef false
+#define false ((cJSON_bool)0)
+#endif
 
 void reset(cJSON *item);
 void reset(cJSON *item) {

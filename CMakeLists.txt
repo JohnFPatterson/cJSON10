@@ -131,12 +131,20 @@ if(ENABLE_CJSON_RUST)
         set(CJSON_RUST_STATIC "${CJSON_RUST_LIBDIR}/libcjson.a")
     endif()
 
+    file(GLOB_RECURSE CJSON_RUST_SOURCES
+        "${CMAKE_SOURCE_DIR}/rust/cjson-core/src/*.rs"
+        "${CMAKE_SOURCE_DIR}/rust/cjson-cabi/src/*.rs"
+        "${CMAKE_SOURCE_DIR}/rust/cjson-core/Cargo.toml"
+        "${CMAKE_SOURCE_DIR}/rust/cjson-cabi/Cargo.toml"
+        "${CMAKE_SOURCE_DIR}/rust/Cargo.toml"
+    )
     add_custom_command(
         OUTPUT "${CJSON_RUST_CDYLIB}" "${CJSON_RUST_STATIC}"
         COMMAND ${CMAKE_COMMAND} -E env
             "CARGO_TARGET_DIR=${CJSON_RUST_TARGET_DIR}"
             "${CARGO_EXECUTABLE}" build --release --manifest-path "${CMAKE_SOURCE_DIR}/rust/Cargo.toml" -p cjson-cabi
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/rust"
+        DEPENDS ${CJSON_RUST_SOURCES}
         COMMENT "Building Rust cJSON C ABI (cjson-cabi)"
         VERBATIM
     )
