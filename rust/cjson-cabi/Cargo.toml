@@ -1,0 +1,18 @@
+[package]
+name = "cjson-cabi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "C ABI shim for the safe cJSON Rust port"
+publish = false
+
+[lib]
+name = "cjson"
+crate-type = ["cdylib", "staticlib"]
+
+[features]
+default = ["locales"]
+locales = []
+
+[dependencies]
+cjson-core = { path = "../cjson-core" }

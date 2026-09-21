@@ -111,8 +111,37 @@ option(ENABLE_TARGET_EXPORT "Enable exporting of CMake targets. Disable when it 
 #cJSON
 set(CJSON_LIB cjson)
 
+option(ENABLE_CJSON_RUST "Build libcjson from the safe Rust port instead of cJSON.c" OFF)
+
 file(GLOB HEADERS cJSON.h)
 set(SOURCES cJSON.c)
+
+if(ENABLE_CJSON_RUST)
+    find_program(CARGO_EXECUTABLE cargo REQUIRED)
+    set(CJSON_RUST_TARGET_DIR "${CMAKE_BINARY_DIR}/rust-target")
+    set(CJSON_RUST_LIBDIR "${CJSON_RUST_TARGET_DIR}/release")
+    if(WIN32)
+        set(CJSON_RUST_CDYLIB "${CJSON_RUST_LIBDIR}/cjson.dll")
+        set(CJSON_RUST_STATIC "${CJSON_RUST_LIBDIR}/cjson.lib")
+    elseif(APPLE)
+        set(CJSON_RUST_CDYLIB "${CJSON_RUST_LIBDIR}/libcjson.dylib")
+        set(CJSON_RUST_STATIC "${CJSON_RUST_LIBDIR}/libcjson.a")
+    else()
+        set(CJSON_RUST_CDYLIB "${CJSON_RUST_LIBDIR}/libcjson.so")
+        set(CJSON_RUST_STATIC "${CJSON_RUST_LIBDIR}/libcjson.a")
+    endif()
+
+    add_custom_command(
+        OUTPUT "${CJSON_RUST_CDYLIB}" "${CJSON_RUST_STATIC}"
+        COMMAND ${CMAKE_COMMAND} -E env
+            "CARGO_TARGET_DIR=${CJSON_RUST_TARGET_DIR}"
+            "${CARGO_EXECUTABLE}" build --release --manifest-path "${CMAKE_SOURCE_DIR}/rust/Cargo.toml" -p cjson-cabi
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/rust"
+        COMMENT "Building Rust cJSON C ABI (cjson-cabi)"
+        VERBATIM
+    )
+    add_custom_target(cjson_rust ALL DEPENDS "${CJSON_RUST_CDYLIB}" "${CJSON_RUST_STATIC}")
+endif()
 
 option(BUILD_SHARED_AND_STATIC_LIBS "Build both shared and static libraries" Off)
 option(CJSON_OVERRIDE_BUILD_SHARED_LIBS "Override BUILD_SHARED_LIBS with CJSON_BUILD_SHARED_LIBS" OFF)
@@ -126,7 +155,24 @@ else()
 endif()
 
 
-if (NOT BUILD_SHARED_AND_STATIC_LIBS)
+if (ENABLE_CJSON_RUST)
+    add_library("${CJSON_LIB}" SHARED IMPORTED GLOBAL)
+    set_target_properties("${CJSON_LIB}" PROPERTIES
+        IMPORTED_LOCATION "${CJSON_RUST_CDYLIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+    )
+    add_dependencies("${CJSON_LIB}" cjson_rust)
+    set(CMAKE_BUILD_RPATH "${CJSON_RUST_LIBDIR}")
+    set(CMAKE_INSTALL_RPATH "${CJSON_RUST_LIBDIR}")
+    if (BUILD_SHARED_AND_STATIC_LIBS)
+        add_library("${CJSON_LIB}-static" STATIC IMPORTED GLOBAL)
+        set_target_properties("${CJSON_LIB}-static" PROPERTIES
+            IMPORTED_LOCATION "${CJSON_RUST_STATIC}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}"
+        )
+        add_dependencies("${CJSON_LIB}-static" cjson_rust)
+    endif()
+elseif (NOT BUILD_SHARED_AND_STATIC_LIBS)
     add_library("${CJSON_LIB}" "${CJSON_LIBRARY_TYPE}" "${HEADERS}" "${SOURCES}")
 else()
     # See https://cmake.org/Wiki/CMake_FAQ#How_do_I_make_my_shared_and_static_libraries_have_the_same_root_name.2C_but_different_suffixes.3F
@@ -135,7 +181,7 @@ else()
     set_target_properties("${CJSON_LIB}-static" PROPERTIES OUTPUT_NAME "${CJSON_LIB}")
     set_target_properties("${CJSON_LIB}-static" PROPERTIES PREFIX "lib")
 endif()
-if (NOT WIN32)
+if (NOT ENABLE_CJSON_RUST AND NOT WIN32)
     target_link_libraries("${CJSON_LIB}" m)
 endif()
 
@@ -144,30 +190,34 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/library_config/libcjson.pc.in"
 
 install(FILES cJSON.h DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/cjson")
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/libcjson.pc" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig")
-install(TARGETS "${CJSON_LIB}"
-    EXPORT "${CJSON_LIB}"
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-    RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
-    INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
-)
-if (BUILD_SHARED_AND_STATIC_LIBS)
-    install(TARGETS "${CJSON_LIB}-static"
-    EXPORT "${CJSON_LIB}" 
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-    INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
-)
-endif()
-if(ENABLE_TARGET_EXPORT)
-    # export library information for CMake projects
-    install(EXPORT "${CJSON_LIB}" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/cJSON")
-endif()
+if (NOT ENABLE_CJSON_RUST)
+    install(TARGETS "${CJSON_LIB}"
+        EXPORT "${CJSON_LIB}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+    )
+    if (BUILD_SHARED_AND_STATIC_LIBS)
+        install(TARGETS "${CJSON_LIB}-static"
+        EXPORT "${CJSON_LIB}" 
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+    )
+    endif()
+    if(ENABLE_TARGET_EXPORT)
+        # export library information for CMake projects
+        install(EXPORT "${CJSON_LIB}" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/cJSON")
+    endif()
 
-if(ENABLE_CJSON_VERSION_SO)
-    set_target_properties("${CJSON_LIB}"
-        PROPERTIES
-            SOVERSION "${CJSON_VERSION_SO}"
-            VERSION "${PROJECT_VERSION}")
+    if(ENABLE_CJSON_VERSION_SO)
+        set_target_properties("${CJSON_LIB}"
+            PROPERTIES
+                SOVERSION "${CJSON_VERSION_SO}"
+                VERSION "${PROJECT_VERSION}")
+    endif()
+else()
+    install(FILES "${CJSON_RUST_CDYLIB}" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}")
 endif()
 
 #cJSON_Utils
@@ -178,7 +228,12 @@ if(ENABLE_CJSON_UTILS)
     file(GLOB HEADERS_UTILS cJSON_Utils.h)
     set(SOURCES_UTILS cJSON_Utils.c)
 
-    if (NOT BUILD_SHARED_AND_STATIC_LIBS)
+    if (ENABLE_CJSON_RUST)
+        # Utils symbols live in the Rust cdylib; expose an interface target for existing link lines.
+        add_library("${CJSON_UTILS_LIB}" INTERFACE)
+        target_link_libraries("${CJSON_UTILS_LIB}" INTERFACE "${CJSON_LIB}")
+        target_include_directories("${CJSON_UTILS_LIB}" INTERFACE "${CMAKE_SOURCE_DIR}")
+    elseif (NOT BUILD_SHARED_AND_STATIC_LIBS)
         add_library("${CJSON_UTILS_LIB}" "${CJSON_LIBRARY_TYPE}" "${HEADERS_UTILS}" "${SOURCES_UTILS}")
         target_link_libraries("${CJSON_UTILS_LIB}" "${CJSON_LIB}")
     else()
@@ -193,33 +248,35 @@ if(ENABLE_CJSON_UTILS)
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/library_config/libcjson_utils.pc.in"
         "${CMAKE_CURRENT_BINARY_DIR}/libcjson_utils.pc" @ONLY)
 
-    install(TARGETS "${CJSON_UTILS_LIB}"
-        EXPORT "${CJSON_UTILS_LIB}"
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
-    )
-    if (BUILD_SHARED_AND_STATIC_LIBS)
-        install(TARGETS "${CJSON_UTILS_LIB}-static" 
-        EXPORT "${CJSON_UTILS_LIB}" 
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+    if (NOT ENABLE_CJSON_RUST)
+        install(TARGETS "${CJSON_UTILS_LIB}"
+            EXPORT "${CJSON_UTILS_LIB}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+            LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+            RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+            INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
         )
+        if (BUILD_SHARED_AND_STATIC_LIBS)
+            install(TARGETS "${CJSON_UTILS_LIB}-static" 
+            EXPORT "${CJSON_UTILS_LIB}" 
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+            INCLUDES DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+            )
+        endif()
+        if(ENABLE_TARGET_EXPORT)
+          # export library information for CMake projects
+          install(EXPORT "${CJSON_UTILS_LIB}" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/cJSON")
+        endif()
+
+        if(ENABLE_CJSON_VERSION_SO)
+            set_target_properties("${CJSON_UTILS_LIB}"
+                PROPERTIES
+                    SOVERSION "${CJSON_UTILS_VERSION_SO}"
+                    VERSION "${PROJECT_VERSION}")
+        endif()
     endif()
     install(FILES cJSON_Utils.h DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/cjson")
     install (FILES "${CMAKE_CURRENT_BINARY_DIR}/libcjson_utils.pc" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig")
-    if(ENABLE_TARGET_EXPORT)
-      # export library information for CMake projects
-      install(EXPORT "${CJSON_UTILS_LIB}" DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/cJSON")
-    endif()
-
-    if(ENABLE_CJSON_VERSION_SO)
-        set_target_properties("${CJSON_UTILS_LIB}"
-            PROPERTIES
-                SOVERSION "${CJSON_UTILS_VERSION_SO}"
-                VERSION "${PROJECT_VERSION}")
-    endif()
 endif()
 
 # create the other package config files
@@ -244,6 +301,12 @@ if(ENABLE_CJSON_TEST)
     set(TEST_CJSON cJSON_test)
     add_executable("${TEST_CJSON}" test.c)
     target_link_libraries("${TEST_CJSON}" "${CJSON_LIB}")
+    if(ENABLE_CJSON_RUST)
+        target_include_directories("${TEST_CJSON}" PRIVATE "${CMAKE_SOURCE_DIR}")
+        add_executable(cjson_layout_probe rust/cjson-cabi/layout/probe.c)
+        target_include_directories(cjson_layout_probe PRIVATE "${CMAKE_SOURCE_DIR}")
+        add_test(NAME cjson_layout_probe COMMAND cjson_layout_probe)
+    endif()
 
     add_test(NAME ${TEST_CJSON} COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${TEST_CJSON}")
 

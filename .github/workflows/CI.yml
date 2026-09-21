@@ -58,6 +58,30 @@ jobs:
           cmake --build .
           make
           make test
+
+  rust:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    steps:
+    - uses: actions/checkout@v2
+    - name: install rust
+      run: |
+        rustup show || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: cargo test and forbid unsafe in core
+      run: |
+        cargo test --manifest-path rust/Cargo.toml
+        if grep -RIn --include='*.rs' --exclude-dir=target -E 'unsafe[[:space:]]+(fn|impl|extern|\{)|[[:space:]]unsafe[[:space:]]*\{' rust/cjson-core; then
+          echo "unsafe is forbidden in cjson-core"
+          exit 1
+        fi
+    - name: cmake rust port public C tests
+      run: |
+        mkdir -p build-rust
+        cd build-rust
+        cmake .. -DENABLE_CJSON_RUST=ON -DENABLE_CJSON_UTILS=ON -DENABLE_CJSON_TEST=ON
+        cmake --build .
+        ctest --output-on-failure
           
   macos:
     runs-on: macos-latest
