@@ -23,6 +23,43 @@
 #ifndef CJSON_TESTS_COMMON_H
 #define CJSON_TESTS_COMMON_H
 
+#ifdef CJSON_RUST_PORT
+#include "../cJSON.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#ifndef true
+#define true ((cJSON_bool)1)
+#endif
+#ifndef false
+#define false ((cJSON_bool)0)
+#endif
+
+void reset(cJSON *item);
+void reset(cJSON *item) {
+    if (item == NULL)
+    {
+        return;
+    }
+    if (item->child != NULL)
+    {
+        cJSON_Delete(item->child);
+        item->child = NULL;
+    }
+    if ((item->valuestring != NULL) && !(item->type & cJSON_IsReference))
+    {
+        cJSON_free(item->valuestring);
+        item->valuestring = NULL;
+    }
+    if ((item->string != NULL) && !(item->type & cJSON_StringIsConst))
+    {
+        cJSON_free(item->string);
+        item->string = NULL;
+    }
+
+    memset(item, 0, sizeof(cJSON));
+}
+#else
 #include "../cJSON.c"
 
 void reset(cJSON *item);
@@ -42,6 +79,7 @@ void reset(cJSON *item) {
 
     memset(item, 0, sizeof(cJSON));
 }
+#endif
 
 char* read_file(const char *filename);
 char* read_file(const char *filename) {

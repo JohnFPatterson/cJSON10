@@ -16,5 +16,7 @@ libcjson_utils.so.*
 .vscode
 .idea
 cmake-build-debug
+rust/target/
+/build-rust/
 *.lst
 *.lss
